@@ -1,7 +1,8 @@
 name: iTag
-version: 1.0.0
+version: 1.0
 description: Name tag API which is backwards compatible with TagAPI
 author: md_5
+authors: [md_5, Jofkos]
 
 load: STARTUP
 main: net.md_5.itag.iTag
