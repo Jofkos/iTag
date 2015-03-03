@@ -42,8 +42,9 @@ public class PlayerReceiveGameProfileEvent extends Event {
 		nameField.set(gameProfile, name.substring(0, Math.min(name.length(), 16)));
 	}
 	
-	public void setTexture(String base64texture) {
-		gameProfile.getProperties().put("textures", new Property("textures", base64texture)); 
+	public void setTexture(String base64texture, String signature) {
+		gameProfile.getProperties().removeAll("textures");
+		gameProfile.getProperties().put("textures", new Property("textures", base64texture, signature));
 	}
 	
 	@Override
