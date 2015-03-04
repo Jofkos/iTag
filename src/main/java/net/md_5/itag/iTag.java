@@ -112,9 +112,7 @@ public class iTag extends JavaPlugin implements Listener {
 	}
 	
 	private WrappedGameProfile getSentName(Player namedPlayer, WrappedGameProfile sent, Player destinationPlayer) {
-		if (sent.getHandle() == playerProfile.invoke(namedPlayer)) {
-			sent = clone(sent);
-		}
+		sent = checkClone(namedPlayer, sent);
 		
 		PlayerReceiveNameTagEvent oldEvent = new PlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, sent.getName());
 		getServer().getPluginManager().callEvent(oldEvent);
@@ -136,7 +134,15 @@ public class iTag extends JavaPlugin implements Listener {
 		return (Integer) getProtocolVersion.invoke(MinecraftFields.getNetworkManager(player));
 	}
 	
-	private WrappedGameProfile clone(WrappedGameProfile original) {
+	public GameProfile checkClone(Player player, GameProfile profile) {
+		return profile == playerProfile.invoke(player) ? profile : clone(profile);
+	}
+	
+	public WrappedGameProfile checkClone(Player player, WrappedGameProfile profile) {
+		return profile.getHandle() == playerProfile.invoke(player) ? profile : clone(profile);
+	}
+	
+	public WrappedGameProfile clone(WrappedGameProfile original) {
 		return (WrappedGameProfile) wrappedProfile.invoke(clone((GameProfile) original.getHandle()));
 	}
 	

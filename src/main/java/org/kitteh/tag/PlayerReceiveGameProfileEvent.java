@@ -1,7 +1,7 @@
 package org.kitteh.tag;
 
 import lombok.Getter;
-import lombok.Setter;
+import net.md_5.itag.iTag;
 import net.minecraft.util.com.mojang.authlib.GameProfile;
 import net.minecraft.util.com.mojang.authlib.properties.Property;
 
@@ -24,7 +24,7 @@ public class PlayerReceiveGameProfileEvent extends Event {
 	private final Player player;
 	@Getter
 	private final Player namedPlayer;
-	@Getter @Setter
+	@Getter
 	private GameProfile gameProfile;
 	
 	public PlayerReceiveGameProfileEvent(Player who, Player namedPlayer, GameProfile profile) {
@@ -45,6 +45,10 @@ public class PlayerReceiveGameProfileEvent extends Event {
 	public void setTexture(String base64texture, String signature) {
 		gameProfile.getProperties().removeAll("textures");
 		gameProfile.getProperties().put("textures", new Property("textures", base64texture, signature));
+	}
+	
+	public void setGameProfile(GameProfile profile) {
+		this.gameProfile = iTag.getInstance().checkClone(namedPlayer, profile);
 	}
 	
 	@Override
