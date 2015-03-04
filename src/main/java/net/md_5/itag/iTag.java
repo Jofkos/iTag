@@ -72,10 +72,7 @@ public class iTag extends JavaPlugin implements Listener {
 	private WrappedGameProfile getSentName(WrappedGameProfile sent, Player destinationPlayer) {
 		Player namedPlayer = Bukkit.getPlayer(sent.getUUID());
 		
-		if (sent.getHandle() == playerProfile.invoke(namedPlayer)) {
-			sent = clone(sent);
-		}
-		
+		sent = checkClone(namedPlayer, sent);
 		PlayerReceiveNameTagEvent oldEvent = new PlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, sent.getName());
 		getServer().getPluginManager().callEvent(oldEvent);
 
@@ -88,13 +85,17 @@ public class iTag extends JavaPlugin implements Listener {
 		
 		WrappedGameProfile newProfile = profileEvent.getGameProfile();
 		
-		if (!namedPlayer.getUniqueId().equals(newProfile.getUUID()))
+		if (!newProfile.getUUID().equals(namedPlayer.getUniqueId()))
 			uuidField.set(newProfile.getHandle(), namedPlayer.getUniqueId());
 		
 		return newProfile;
 	}
 	
-	private WrappedGameProfile clone(WrappedGameProfile original) {
+	public WrappedGameProfile checkClone(Player player, WrappedGameProfile original) {
+		return original.getHandle() == playerProfile.invoke(player) ? cloneProfile(original) : original;
+	}
+	
+	public WrappedGameProfile cloneProfile(WrappedGameProfile original) {
 		WrappedGameProfile result = new WrappedGameProfile(original.getUUID(), original.getName());
 		propertiesField.set(result.getHandle(), propertiesField.get(original.getHandle()));
 		return result;

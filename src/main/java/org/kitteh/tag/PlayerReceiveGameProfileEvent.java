@@ -1,7 +1,7 @@
 package org.kitteh.tag;
 
 import lombok.Getter;
-import lombok.Setter;
+import net.md_5.itag.iTag;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -25,7 +25,7 @@ public class PlayerReceiveGameProfileEvent extends Event {
 	private final Player player;
 	@Getter
 	private final Player namedPlayer;
-	@Getter @Setter
+	@Getter
 	private WrappedGameProfile gameProfile;
 	
 	public PlayerReceiveGameProfileEvent(Player who, Player namedPlayer, WrappedGameProfile profile) {
@@ -46,6 +46,10 @@ public class PlayerReceiveGameProfileEvent extends Event {
 	public void setTexture(String texture, String signature) {
 		gameProfile.getProperties().removeAll("textures");
 		gameProfile.getProperties().put("textures", new WrappedSignedProperty("textures", texture, signature));
+	}
+	
+	public void setGameProfile(WrappedGameProfile gameProfile) {
+		this.gameProfile = iTag.getInstance().checkClone(this.namedPlayer, gameProfile);
 	}
 	
 	@Override
