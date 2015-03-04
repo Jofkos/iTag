@@ -1,5 +1,5 @@
 name: iTag
-version: 1.0.1
+version: ${version}
 description: Name tag API which is backwards compatible with TagAPI
 author: md_5
 authors: [md_5, Jofkos]
