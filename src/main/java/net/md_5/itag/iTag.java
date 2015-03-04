@@ -53,6 +53,7 @@ public class iTag extends JavaPlugin implements Listener {
 				List<PlayerInfoData> list = event.getPacket().getPlayerInfoDataLists().read(0);
 				for (int i = 0; i < list.size(); i++) {
 					PlayerInfoData data = list.get(i);
+					if (data == null || data.getProfile() == null) continue;
 					WrappedGameProfile result = getSentName(data.getProfile(), event.getPlayer());
 					list.set(i, new PlayerInfoData(result, data.getPing(), data.getGameMode(), data.getDisplayName()));
 				}
