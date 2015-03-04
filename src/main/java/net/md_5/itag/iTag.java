@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import lombok.Getter;
 import net.minecraft.util.com.mojang.authlib.GameProfile;
+import net.minecraft.util.com.mojang.authlib.properties.PropertyMap;
 import net.minecraft.util.com.mojang.util.UUIDTypeAdapter;
 
 import org.bukkit.Bukkit;
@@ -39,6 +40,7 @@ public class iTag extends JavaPlugin implements Listener {
 	
 	private static final MethodAccessor getProtocolVersion = Accessors.getMethodAccessor(MinecraftReflection.getMinecraftClass("NetworkManager"), "getVersion");
 	private static final MethodAccessor playerProfile = Accessors.getMethodAccessor(MinecraftReflection.getCraftPlayerClass(), "getProfile");
+	private static final FieldAccessor propertiesField = Accessors.getFieldAcccessorOrNull(GameProfile.class, "properties", PropertyMap.class);
 	private static final ConstructorAccessor wrappedProfile = Accessors.getConstructorAccessor(WrappedGameProfile.class, Object.class);
 	private static final FieldAccessor uuidField = Accessors.getFieldAcccessorOrNull(GameProfile.class, "id", UUID.class);
 	
@@ -110,7 +112,10 @@ public class iTag extends JavaPlugin implements Listener {
 	}
 	
 	private WrappedGameProfile getSentName(Player namedPlayer, WrappedGameProfile sent, Player destinationPlayer) {
-
+		if (sent.getHandle() == playerProfile.invoke(namedPlayer)) {
+			sent = clone(sent);
+		}
+		
 		PlayerReceiveNameTagEvent oldEvent = new PlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, sent.getName());
 		getServer().getPluginManager().callEvent(oldEvent);
 
@@ -127,8 +132,18 @@ public class iTag extends JavaPlugin implements Listener {
 		return (WrappedGameProfile) wrappedProfile.invoke(newProfile);
 	}
 
-	public int getProcotolVersion(Player player) {
+	private int getProcotolVersion(Player player) {
 		return (Integer) getProtocolVersion.invoke(MinecraftFields.getNetworkManager(player));
+	}
+	
+	private WrappedGameProfile clone(WrappedGameProfile original) {
+		return (WrappedGameProfile) wrappedProfile.invoke(clone((GameProfile) original.getHandle()));
+	}
+	
+	private GameProfile clone(GameProfile original) {
+		GameProfile result = new GameProfile(original.getId(), original.getName());
+		propertiesField.set(result, original.getProperties());
+		return result;
 	}
 
 	public void refreshPlayer(Player player) {
