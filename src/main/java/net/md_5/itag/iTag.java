@@ -122,7 +122,7 @@ public class iTag extends JavaPlugin implements Listener {
 		AsyncPlayerReceiveNameTagEvent newEvent = new AsyncPlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, oldEvent.getTag(), sent.getId().contains("-") ? UUID.fromString(sent.getId()) : UUIDTypeAdapter.fromString(sent.getId()));
 		getServer().getPluginManager().callEvent(newEvent);
 
-		PlayerReceiveGameProfileEvent profileEvent = new PlayerReceiveGameProfileEvent(destinationPlayer, namedPlayer, (GameProfile) playerProfile.invoke(namedPlayer));
+		PlayerReceiveGameProfileEvent profileEvent = new PlayerReceiveGameProfileEvent(destinationPlayer, namedPlayer, (GameProfile) sent.getHandle());
 		profileEvent.setName(newEvent.getTag());
 		getServer().getPluginManager().callEvent(profileEvent);
 		
