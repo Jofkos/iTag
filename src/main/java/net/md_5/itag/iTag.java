@@ -1,21 +1,14 @@
 package net.md_5.itag;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import lombok.Getter;
-import net.minecraft.util.com.mojang.authlib.GameProfile;
-import net.minecraft.util.com.mojang.authlib.properties.PropertyMap;
-import net.minecraft.util.com.mojang.util.UUIDTypeAdapter;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.kitteh.tag.AsyncPlayerReceiveNameTagEvent;
 import org.kitteh.tag.PlayerReceiveGameProfileEvent;
@@ -27,91 +20,57 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.accessors.Accessors;
-import com.comphenix.protocol.reflect.accessors.ConstructorAccessor;
 import com.comphenix.protocol.reflect.accessors.FieldAccessor;
 import com.comphenix.protocol.reflect.accessors.MethodAccessor;
-import com.comphenix.protocol.utility.MinecraftFields;
 import com.comphenix.protocol.utility.MinecraftReflection;
+import com.comphenix.protocol.wrappers.EnumWrappers.PlayerInfoAction;
+import com.comphenix.protocol.wrappers.PlayerInfoData;
 import com.comphenix.protocol.wrappers.WrappedGameProfile;
 import com.google.common.base.Preconditions;
 
 @SuppressWarnings("deprecation")
 public class iTag extends JavaPlugin implements Listener {
 	
-	private static final MethodAccessor getProtocolVersion = Accessors.getMethodAccessor(MinecraftReflection.getMinecraftClass("NetworkManager"), "getVersion");
+	private static final FieldAccessor propertiesField = Accessors.getFieldAccessor(MinecraftReflection.getGameProfileClass(), "properties", true);
+	private static final FieldAccessor uuidField = Accessors.getFieldAcccessorOrNull(MinecraftReflection.getGameProfileClass(), "id", UUID.class);
 	private static final MethodAccessor playerProfile = Accessors.getMethodAccessor(MinecraftReflection.getCraftPlayerClass(), "getProfile");
-	private static final FieldAccessor propertiesField = Accessors.getFieldAcccessorOrNull(GameProfile.class, "properties", PropertyMap.class);
-	private static final ConstructorAccessor wrappedProfile = Accessors.getConstructorAccessor(WrappedGameProfile.class, Object.class);
-	private static final FieldAccessor uuidField = Accessors.getFieldAcccessorOrNull(GameProfile.class, "id", UUID.class);
 	
 	@Getter
 	private static iTag instance;
-	private Map<Integer, Player> entityIdMap;
 	
 	@Override
 	public void onEnable() {
 		instance = this;
-		entityIdMap = new HashMap<Integer, Player>();
 		new TagAPI(this);
-
-		for (Player player : getServer().getOnlinePlayers()) {
-			entityIdMap.put(player.getEntityId(), player);
-		}
-
+		
 		getServer().getPluginManager().registerEvents(this, this);
 		
 		ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this, PacketType.Play.Server.PLAYER_INFO) {
 
 			public void onPacketSending(PacketEvent event) {
-				if (getProcotolVersion(event.getPlayer()) >= 47 && event.getPacket().getIntegers().read(0) == 0) {
-					WrappedGameProfile original = event.getPacket().getGameProfiles().read(0);
-					event.getPacket().getGameProfiles().write(0, getSentName(Bukkit.getPlayer(original.getUUID()), original, event.getPlayer()));
+				if (event.getPacket().getPlayerInfoAction().read(0) != PlayerInfoAction.ADD_PLAYER) return;
+				
+				List<PlayerInfoData> list = event.getPacket().getPlayerInfoDataLists().read(0);
+				for (int i = 0; i < list.size(); i++) {
+					PlayerInfoData data = list.get(i);
+					WrappedGameProfile result = getSentName(data.getProfile(), event.getPlayer());
+					list.set(i, new PlayerInfoData(result, data.getPing(), data.getGameMode(), data.getDisplayName()));
 				}
+				event.getPacket().getPlayerInfoDataLists().write(0, list);
 			};
 
 		});
-		ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this, PacketType.Play.Server.NAMED_ENTITY_SPAWN) {
-			@Override
-			public void onPacketSending(final PacketEvent event) {
-				if (getProcotolVersion(event.getPlayer()) < 47) {
-					event.getPacket().getGameProfiles().write(0, getSentName(event.getPacket().getIntegers().read(0), event.getPacket().getGameProfiles().read(0), event.getPlayer()));
-				}		
-			}
-		});
-		
-		wrappedProfile.getConstructor().setAccessible(true);
-	}
-
-	@EventHandler
-	public void onJoin(PlayerJoinEvent event) {
-		entityIdMap.put(event.getPlayer().getEntityId(), event.getPlayer());
-	}
-
-	@EventHandler
-	public void onQuit(PlayerQuitEvent event) {
-		entityIdMap.remove(event.getPlayer().getEntityId());
 	}
 
 	@Override
 	public void onDisable() {
 		ProtocolLibrary.getProtocolManager().removePacketListeners(this);
-
-		entityIdMap.clear();
-		entityIdMap = null;
 		instance = null;
 	}
-
-	private WrappedGameProfile getSentName(int sentEntityId, WrappedGameProfile sent, Player destinationPlayer) {
-		Preconditions.checkState(getServer().isPrimaryThread(), "Can only process events on main thread.");
-
-		Player namedPlayer = entityIdMap.get(sentEntityId);
-		if (namedPlayer == null) {
-			return sent;
-		}
-		return getSentName(namedPlayer, sent, destinationPlayer);
-	}
 	
-	private WrappedGameProfile getSentName(Player namedPlayer, WrappedGameProfile sent, Player destinationPlayer) {
+	private WrappedGameProfile getSentName(WrappedGameProfile sent, Player destinationPlayer) {
+		Player namedPlayer = Bukkit.getPlayer(sent.getUUID());
+		
 		if (sent.getHandle() == playerProfile.invoke(namedPlayer)) {
 			sent = clone(sent);
 		}
@@ -119,30 +78,24 @@ public class iTag extends JavaPlugin implements Listener {
 		PlayerReceiveNameTagEvent oldEvent = new PlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, sent.getName());
 		getServer().getPluginManager().callEvent(oldEvent);
 
-		AsyncPlayerReceiveNameTagEvent newEvent = new AsyncPlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, oldEvent.getTag(), sent.getId().contains("-") ? UUID.fromString(sent.getId()) : UUIDTypeAdapter.fromString(sent.getId()));
+		AsyncPlayerReceiveNameTagEvent newEvent = new AsyncPlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, oldEvent.getTag(), sent.getUUID());
 		getServer().getPluginManager().callEvent(newEvent);
 
-		PlayerReceiveGameProfileEvent profileEvent = new PlayerReceiveGameProfileEvent(destinationPlayer, namedPlayer, (GameProfile) playerProfile.invoke(namedPlayer));
+		PlayerReceiveGameProfileEvent profileEvent = new PlayerReceiveGameProfileEvent(destinationPlayer, namedPlayer, sent);
 		profileEvent.setName(newEvent.getTag());
 		getServer().getPluginManager().callEvent(profileEvent);
 		
-		GameProfile newProfile = profileEvent.getGameProfile();
-		uuidField.set(newProfile, namedPlayer.getUniqueId());
+		WrappedGameProfile newProfile = profileEvent.getGameProfile();
 		
-		return (WrappedGameProfile) wrappedProfile.invoke(newProfile);
-	}
-
-	private int getProcotolVersion(Player player) {
-		return (Integer) getProtocolVersion.invoke(MinecraftFields.getNetworkManager(player));
+		if (!namedPlayer.getUniqueId().equals(newProfile.getUUID()))
+			uuidField.set(newProfile.getHandle(), namedPlayer.getUniqueId());
+		
+		return newProfile;
 	}
 	
 	private WrappedGameProfile clone(WrappedGameProfile original) {
-		return (WrappedGameProfile) wrappedProfile.invoke(clone((GameProfile) original.getHandle()));
-	}
-	
-	private GameProfile clone(GameProfile original) {
-		GameProfile result = new GameProfile(original.getId(), original.getName());
-		propertiesField.set(result, original.getProperties());
+		WrappedGameProfile result = new WrappedGameProfile(original.getUUID(), original.getName());
+		propertiesField.set(result.getHandle(), propertiesField.get(original.getHandle()));
 		return result;
 	}
 

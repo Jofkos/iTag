@@ -6,6 +6,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.PlayerEvent;
 
+/**
+ * {@link Deprecated}
+ * @see AsyncPlayerReceiveNameTagEvent
+ */
 @Deprecated
 public class PlayerReceiveNameTagEvent extends PlayerEvent {
 

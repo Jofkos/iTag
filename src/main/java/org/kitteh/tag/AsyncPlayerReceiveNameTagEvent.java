@@ -21,7 +21,7 @@ public class AsyncPlayerReceiveNameTagEvent extends Event {
 	private UUID UUID;
 	@Getter
 	private boolean tagModified;
-	@Getter
+	@Deprecated @Getter
 	private boolean UUIDModified;
 	
 	public AsyncPlayerReceiveNameTagEvent(Player who, Player namedPlayer, String initialName, UUID uuid) {
@@ -46,6 +46,10 @@ public class AsyncPlayerReceiveNameTagEvent extends Event {
 		return tag.length() < 16;
 	}
 	
+	/**
+	 * UUID changes are useless in 1.8
+	 * @param uuid
+	 */
 	@Deprecated
 	public void setUUID(UUID uuid) {
 		Preconditions.checkNotNull(uuid, "uuid");
