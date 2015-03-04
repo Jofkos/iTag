@@ -1,6 +1,5 @@
 package org.kitteh.tag;
 
-import com.google.common.base.Throwables;
 import java.io.File;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -9,9 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import lombok.Delegate;
+
 import lombok.Getter;
+import lombok.experimental.Delegate;
 import net.md_5.itag.iTag;
+
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
@@ -27,124 +28,100 @@ import org.bukkit.plugin.RegisteredListener;
 import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.UnknownDependencyException;
 
-public class TagAPI extends PluginBase implements PluginLoader
-{
+import com.google.common.base.Throwables;
 
-    public Plugin loadPlugin(File file) throws InvalidPluginException, UnknownDependencyException
-    {
-        throw new UnsupportedOperationException( "Not supported yet." ); //To change body of generated methods, choose Tools | Templates.
-    }
+public class TagAPI extends PluginBase implements PluginLoader {
+	
+	public Plugin loadPlugin(File file) throws InvalidPluginException, UnknownDependencyException {
+		throw new UnsupportedOperationException("Not supported yet."); 
+	}
+	
+	public PluginDescriptionFile getPluginDescription(File file) throws InvalidDescriptionException {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
+	
+	public Pattern[] getPluginFileFilters() {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
 
-    public PluginDescriptionFile getPluginDescription(File file) throws InvalidDescriptionException
-    {
-        throw new UnsupportedOperationException( "Not supported yet." ); //To change body of generated methods, choose Tools | Templates.
-    }
+	public Map<Class<? extends Event>, Set<RegisteredListener>> createRegisteredListeners(Listener listener, Plugin plugin) {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
 
-    public Pattern[] getPluginFileFilters()
-    {
-        throw new UnsupportedOperationException( "Not supported yet." ); //To change body of generated methods, choose Tools | Templates.
-    }
+	public void enablePlugin(Plugin plugin) {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
 
-    public Map<Class<? extends Event>, Set<RegisteredListener>> createRegisteredListeners(Listener listener, Plugin plugin)
-    {
-        throw new UnsupportedOperationException( "Not supported yet." ); //To change body of generated methods, choose Tools | Templates.
-    }
+	private interface Excludes {
 
-    public void enablePlugin(Plugin plugin)
-    {
-        throw new UnsupportedOperationException( "Not supported yet." ); //To change body of generated methods, choose Tools | Templates.
-    }
+		PluginLoader getPluginLoader();
+		
+		PluginDescriptionFile getDescription();
 
-    private interface Excludes
-    {
+		String getName();
+	}
 
-        PluginLoader getPluginLoader();
+	@Delegate(excludes = Excludes.class, types = { CommandExecutor.class, TabCompleter.class, Plugin.class })
+	private final iTag parent;
+	@Getter
+	private PluginDescriptionFile description;
+	private List<Plugin> plugins;
+	private Map<String, Plugin> lookupNames;
 
-        PluginDescriptionFile getDescription();
+	public TagAPI(iTag parent) {
+		this.parent = parent;
+		
+		plugins = getObj(parent.getServer().getPluginManager(), SimplePluginManager.class, "plugins");
+		lookupNames = getObj(parent.getServer().getPluginManager(), SimplePluginManager.class, "lookupNames");
 
-        String getName();
-    }
-    @Delegate(excludes = Excludes.class, types =
-    {
-        CommandExecutor.class, TabCompleter.class, Plugin.class
-    })
-    private final iTag parent;
-    @Getter
-    private PluginDescriptionFile description;
-    private List<Plugin> plugins;
-    private Map<String, Plugin> lookupNames;
+		StringWriter write = new StringWriter();
+		parent.getDescription().save(write);
+		String yaml = write.toString().replaceAll("iTag", "TagAPI");
 
-    public TagAPI(iTag parent)
-    {
-        this.parent = parent;
+		try {
+			description = new PluginDescriptionFile(new StringReader(yaml));
+		} catch (InvalidDescriptionException ex) {
+			Throwables.propagate(ex);
+		}
 
-        plugins = (List<Plugin>) getObj( SimplePluginManager.class, parent.getServer().getPluginManager(), "plugins" );
-        lookupNames = (Map<String, Plugin>) getObj( SimplePluginManager.class, parent.getServer().getPluginManager(), "lookupNames" );
+		plugins.add(this);
+		lookupNames.put(getName(), this);
+	}
+	
+	@SuppressWarnings("unchecked")
+	private <T> T getObj(Object obj, Class<?> clazz, String fieldName) {
+		try {
+			Field field = clazz.getDeclaredField(fieldName);
+			field.setAccessible(true);
+			return (T) field.get(obj);
+		} catch (Exception e) {}
+		return null;
+	}
+	
+	public PluginLoader getPluginLoader() {
+		return this;
+	}
 
-        StringWriter write = new StringWriter();
-        parent.getDescription().save( write );
-        String yaml = write.toString().replaceAll( "iTag", "TagAPI" );
+	public void disablePlugin(Plugin plugin) {
+		plugins.remove(plugin);
+		lookupNames.remove(plugin.getName());
+	}
 
-        try
-        {
-            description = new PluginDescriptionFile( new StringReader( yaml ) );
-        } catch ( InvalidDescriptionException ex )
-        {
-            Throwables.propagate( ex );
-        }
+	public static void refreshPlayer(Player player) {
+		if (iTag.getInstance() != null) {
+			iTag.getInstance().refreshPlayer(player);
+		}
+	}
 
-        plugins.add( this );
-        lookupNames.put( getName(), this );
-    }
+	public static void refreshPlayer(Player player, Player forWhom) {
+		if (iTag.getInstance() != null) {
+			iTag.getInstance().refreshPlayer(player, forWhom);
+		}
+	}
 
-    public PluginLoader getPluginLoader()
-    {
-        return this;
-    }
-
-    public void disablePlugin(Plugin plugin)
-    {
-        plugins.remove( plugin );
-        lookupNames.remove( plugin.getName() );
-    }
-
-    private static Object getObj(Class<?> clazz, Object owner, String name)
-    {
-        try
-        {
-            Field field = clazz.getDeclaredField( name );
-            field.setAccessible( true );
-            return field.get( owner );
-        } catch ( Throwable t )
-        {
-            Throwables.propagate( t );
-        }
-
-        // Impossible
-        return null;
-    }
-
-    public static void refreshPlayer(Player player)
-    {
-        if ( iTag.getInstance() != null )
-        {
-            iTag.getInstance().refreshPlayer( player );
-        }
-    }
-
-    public static void refreshPlayer(Player player, Player forWhom)
-    {
-        if ( iTag.getInstance() != null )
-        {
-            iTag.getInstance().refreshPlayer( player, forWhom );
-        }
-    }
-
-    public static void refreshPlayer(Player player, Set<Player> forWhom)
-    {
-        if ( iTag.getInstance() != null )
-        {
-            iTag.getInstance().refreshPlayer( player, forWhom );
-        }
-    }
+	public static void refreshPlayer(Player player, Set<Player> forWhom) {
+		if (iTag.getInstance() != null) {
+			iTag.getInstance().refreshPlayer(player, forWhom);
+		}
+	}
 }
