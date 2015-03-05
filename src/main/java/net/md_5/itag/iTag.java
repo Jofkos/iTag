@@ -72,6 +72,9 @@ public class iTag extends JavaPlugin implements Listener {
 	private WrappedGameProfile getSentName(WrappedGameProfile sent, Player destinationPlayer) {
 		Player namedPlayer = Bukkit.getPlayer(sent.getUUID());
 		
+		if (namedPlayer == null || sent == null)
+			return sent;
+		
 		sent = checkClone(namedPlayer, sent);
 		PlayerReceiveNameTagEvent oldEvent = new PlayerReceiveNameTagEvent(destinationPlayer, namedPlayer, sent.getName());
 		getServer().getPluginManager().callEvent(oldEvent);
