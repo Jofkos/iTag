@@ -142,7 +142,7 @@ public class iTag extends JavaPlugin implements Listener {
 	}
 	
 	public WrappedGameProfile checkClone(Player player, WrappedGameProfile profile) {
-		return profile.getHandle() == playerProfile.invoke(player) ? profile : clone(profile);
+		return profile.getHandle() == playerProfile.invoke(player) ? clone(profile) : profile;
 	}
 	
 	public WrappedGameProfile clone(WrappedGameProfile original) {
